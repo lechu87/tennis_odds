@@ -11,7 +11,7 @@ import tennis_functions
 
 class tennis_match:
     def __init__(self,tennis_match,bukmacher="betfan"):
-        with open('tennis_dictionary.json') as dict_file:
+        with open('config/tennis_dictionary.json') as dict_file:
             tennis_dictionary=json.load(dict_file)
         self.dictionary=tennis_dictionary
         

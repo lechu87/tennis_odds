@@ -133,7 +133,7 @@ def create_tables():
     conn = connect_to_db()
     cur = conn.cursor()
     
-    sql_file = os.path.join(os.path.dirname(__file__), 'db_schema.sql')
+    sql_file = os.path.join(os.path.dirname(__file__), 'sql', 'db_schema.sql')
     with open(sql_file, 'r', encoding='utf-8') as f:
         sql = f.read()
     
@@ -229,7 +229,7 @@ def create_tables():
     conn = connect_to_postgres_local()
     cur = conn.cursor()
 
-    sql_file = os.path.join(os.path.dirname(os.path.abspath(__file__)), 'db_schema.sql')
+    sql_file = os.path.join(os.path.dirname(os.path.abspath(__file__)), 'sql', 'db_schema.sql')
     with open(sql_file, 'r', encoding='utf-8') as f:
         sql = f.read()
 

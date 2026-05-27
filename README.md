@@ -10,12 +10,14 @@ Clean repository for the current tennis odds scraping pipeline.
 	- `iforbet_t.py`, `iforbet_tennis.py`
 	- `etoto_t.py`, `totalbet_t.py`, `lvbet_t.py`
 	- `bookmaker_runner.py`, `tennis_functions.py`, `connect_to_postgres.py`
-- `suggest_dictionary_updates.py`: log-to-dictionary helper and interactive review tool.
+- `config/tennis_dictionary.json`: player-name dictionary used by all scrapers.
+- `suggest_dictionary_updates.py`: log-to-dictionary helper and interactive review tool (defaults now point to `config/` and `data/`).
 - `run.sh`: main entrypoint (uses lock file and doubles flags).
 - `.env.example`: runtime configuration template.
 - `requirements.txt` and `requirements_postgres.txt`: dependencies.
-- `SQL_QUERIES_POROWNANIE.sql` and `db_schema.sql`: analysis and schema helpers.
-- `sql/`, `logs/`, `data/`, `scripts/`: repository folders for queries, output, and utilities.
+- `sql/SQL_QUERIES_POROWNANIE.sql` and `sql/db_schema.sql`: analysis and schema helpers.
+- `data/odds`, `data/raw`, `data/reports`, `data/runtime`: generated runtime artifacts.
+- `sql/`, `logs/`, `scripts/`: repository folders for queries, logs and utilities.
 
 ## Quick start
 

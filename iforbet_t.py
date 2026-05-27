@@ -20,9 +20,9 @@ run_iforbet_family(
     categories_url='https://www.iforbet.pl/rest/market/categories/multi/5/events?gamesClass=major',
     event_url_template='https://www.iforbet.pl/rest/market/events/{match_id}',
     bukmacher='iforbet',
-    out_file_name='iforbet_odds.csv',
-    odds_json_path='iforbet_tennis.json',
-    odds_org_json_path='iforbet_tennis_org.json',
+    out_file_name='data/odds/iforbet_odds.csv',
+    odds_json_path='data/raw/iforbet_tennis.json',
+    odds_org_json_path='data/raw/iforbet_tennis_org.json',
     parser_module=iforbet_tennis,
     event_id_env_var='IFORBET_EVENT_ID',
     include_tournament_keywords=[

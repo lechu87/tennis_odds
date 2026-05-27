@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 """Collect unknown player names from logs and suggest dictionary updates.
 
-This script reads tennis_dictionary.json, scans log files for unknown player lines
+This script reads config/tennis_dictionary.json, scans log files for unknown player lines
 emitted by the scrapers (e.g. "Name": ["Name"], or ["Name"]), and produces
 a single markdown report with suggestions where aliases could be added.
 
@@ -545,13 +545,13 @@ def main() -> int:
     parser = argparse.ArgumentParser(description="Suggest and apply player dictionary updates")
     parser.add_argument(
         "--dictionary",
-        default="tennis_dictionary.json",
-        help="Path to tennis dictionary JSON (default: tennis_dictionary.json)",
+        default="config/tennis_dictionary.json",
+        help="Path to tennis dictionary JSON (default: config/tennis_dictionary.json)",
     )
     parser.add_argument(
         "--logs",
         nargs="*",
-        default=["betclic_log", "bc_log*", "*_log", "logfile_*.log"],
+        default=["logs/*.log", "betclic_log", "bc_log*", "*_log", "logfile_*.log"],
         help="Glob patterns for log files to scan",
     )
     parser.add_argument(
@@ -562,13 +562,13 @@ def main() -> int:
     )
     parser.add_argument(
         "--output",
-        default="dictionary_review.md",
-        help="Output markdown report path (default: dictionary_review.md)",
+        default="data/reports/dictionary_review.md",
+        help="Output markdown report path (default: data/reports/dictionary_review.md)",
     )
     parser.add_argument(
         "--input-file",
-        default="players_to_add.txt",
-        help="Path to input list of names for interactive mode (default: players_to_add.txt)",
+        default="data/runtime/players_to_add.txt",
+        help="Path to input list of names for interactive mode (default: data/runtime/players_to_add.txt)",
     )
     parser.add_argument(
         "--generate-input",
@@ -582,13 +582,13 @@ def main() -> int:
     )
     parser.add_argument(
         "--skipped-file",
-        default="players_skipped.json",
-        help="File storing skipped names to remember (default: players_skipped.json)",
+        default="data/runtime/players_skipped.json",
+        help="File storing skipped names to remember (default: data/runtime/players_skipped.json)",
     )
     parser.add_argument(
         "--decisions-file",
-        default="players_decisions.json",
-        help="File storing interactive decisions (default: players_decisions.json)",
+        default="data/runtime/players_decisions.json",
+        help="File storing interactive decisions (default: data/runtime/players_decisions.json)",
     )
     parser.add_argument(
         "--no-report",

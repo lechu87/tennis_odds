@@ -27,7 +27,7 @@ import connect_to_postgres as connect_to_wp_db
 import tennis_functions
 
 # Load tennis dictionary
-with open('tennis_dictionary.json') as dict_file:
+with open('config/tennis_dictionary.json') as dict_file:
     tennis_dictionary = json.load(dict_file)
 
 # Setup requests with timeout and retries
@@ -43,7 +43,7 @@ session.mount('https://', adapter)
 HEADERS = {'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36'}
 BASE_URL = 'https://www.betclic.pl'
 TENNIS_URL = BASE_URL + '/tenis-stennis'
-FAILED_URLS_FILE = 'betclic_failed_urls.txt'
+FAILED_URLS_FILE = 'data/runtime/betclic_failed_urls.txt'
 REQUEST_DELAY_SECONDS = 0.35
 BLOCK_COOLDOWN_SECONDS = 180
 INCLUDE_LIVE = os.getenv('BETCLIC_INCLUDE_LIVE', '0') == '1'
@@ -448,7 +448,7 @@ def extract_match_from_match_page(ng_state):
 all_odds = []
 conn = connect_to_wp_db.connect_to_db()
 
-out_file_name = 'betclic_odds.csv'
+out_file_name = 'data/odds/betclic_odds.csv'
 with open(out_file_name, 'w') as outfile:
     print('tournament', 'player1', 'player2', 'name', 'cat1', 'cat2', 'value', 'odd', 'bukmacher', 'date',
           sep='\t', file=outfile)
@@ -534,12 +534,12 @@ with open(out_file_name, 'w') as outfile:
     print(f"Niedostępne URL-e: {len(failed_match_urls)} zapisane do {FAILED_URLS_FILE}", file=sys.stderr)
 
 # Save odds to files
-with open('betclick_tennis.txt', 'w') as all_odds_file:
+with open('data/raw/betclick_tennis.txt', 'w') as all_odds_file:
     print(all_odds, file=all_odds_file)
 
 print("TIME2:", datetime.now().strftime("%H:%M:%S"))
 
-with open('betclick_tennis.json', 'w') as all_odds_json_file:
+with open('data/raw/betclick_tennis.json', 'w') as all_odds_json_file:
     json.dump(all_odds, all_odds_json_file)
 
 print("TIME3:", datetime.now().strftime("%H:%M:%S"))
@@ -594,7 +594,7 @@ function filterTable() {{
 </script>
 </body></html>"""
 
-    html_file = 'betclic_odds.html'
+    html_file = 'data/reports/betclic_odds.html'
     with open(html_file, 'w', encoding='utf-8') as f:
         f.write(html_out)
     print(f"✓ HTML tabelka: {html_file} ({len(df)} wierszy)")

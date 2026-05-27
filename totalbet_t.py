@@ -11,9 +11,9 @@ import os
 
 BASE_URL = 'https://totalbet.pl/dealer'
 
-OUT_FILE_NAME = 'totalbet_odds.csv'
-ODDS_JSON_PATH = 'totalbet_tennis_one_game.json'
-ODDS_ORG_JSON_PATH = 'totalbet_tennis_org_one_game.json'
+OUT_FILE_NAME = 'data/odds/totalbet_odds.csv'
+ODDS_JSON_PATH = 'data/raw/totalbet_tennis_one_game.json'
+ODDS_ORG_JSON_PATH = 'data/raw/totalbet_tennis_org_one_game.json'
 BUKMACHER = 'totalbet'
 
 INCLUDE_TOURNAMENT_KEYWORDS = [

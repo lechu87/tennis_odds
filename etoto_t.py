@@ -20,9 +20,9 @@ run_iforbet_family(
     categories_url='https://api.etoto.pl/rest/market/categories/multi/5/events?gamesClass=major',
     event_url_template='https://api.etoto.pl/rest/market/events/{match_id}',
     bukmacher='etoto',
-    out_file_name='etoto_odds.csv',
-    odds_json_path='etoto_tennis.json',
-    odds_org_json_path='etoto_tennis_org.json',
+    out_file_name='data/odds/etoto_odds.csv',
+    odds_json_path='data/raw/etoto_tennis.json',
+    odds_org_json_path='data/raw/etoto_tennis_org.json',
     parser_module=iforbet_tennis,
     event_id_env_var='ETOTO_EVENT_ID',
     include_tournament_keywords=[

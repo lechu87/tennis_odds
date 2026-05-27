@@ -28,6 +28,7 @@ if ! flock -n 9; then
 fi
 
 mkdir -p "${ROOT_DIR}/logs"
+mkdir -p "${ROOT_DIR}/data/odds" "${ROOT_DIR}/data/raw" "${ROOT_DIR}/data/reports" "${ROOT_DIR}/data/runtime"
 
 cd "${ROOT_DIR}" || exit 1
 "$PYTHON_BIN" -m src.runner

@@ -42,7 +42,7 @@ SKIP_DOUBLES = os.getenv('BETFAN_SKIP_DOUBLES', '1') == '1'
 if SKIP_DOUBLES:
     EXCLUDE_TOURNAMENT_KEYWORDS = EXCLUDE_TOURNAMENT_KEYWORDS + DOUBLES_TOURNAMENT_KEYWORDS
 
-with open('tennis_dictionary.json') as dict_file:
+with open('config/tennis_dictionary.json') as dict_file:
     tennis_dictionary=json.load(dict_file)
 #print (tennis_dictionary)
 
@@ -55,7 +55,7 @@ all_odds_org = []
 tmp_games=[]
 #print ("MECZY:",len(all_games['data']))
 conn=connect_to_wp_db.connect_to_db()
-out_file_name='betfan_odds.csv'
+out_file_name='data/odds/betfan_odds.csv'
 outfile=open(out_file_name,'w')
 print('tournament','player1','player2','name','cat1','cat2','value','odd','bukmacher','date',sep='\t',file=outfile)
 
@@ -135,9 +135,9 @@ outfile.close()
 
 print('MECZY przetworzone:', processed)
 
-json.dump(all_odds,open('betfan_tennis.json','w'))
+json.dump(all_odds,open('data/raw/betfan_tennis.json','w'))
 #json.dump(all_odds_converted,open('iforbet_tennis_converted.json','w'))
-json.dump(all_odds_org,open('betfan_tennis_org.json','w'))
+json.dump(all_odds_org,open('data/raw/betfan_tennis_org.json','w'))
 #match_obj.insert_odds_converted_to_db()
 players,dates=tennis_functions.read_players_and_dates(out_file_name)
 tennis_functions.delete_players_and_dates(conn,players,dates,'betfan')

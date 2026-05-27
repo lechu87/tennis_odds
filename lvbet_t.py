@@ -15,9 +15,9 @@ MARKETS_URL_TEMPLATE = BASE_URL + '/matches/{match_id}/markets'
 SPORTS_GROUPS_URL = BASE_URL + '/sports-groups'
 
 BUKMACHER = 'lvbet'
-OUT_FILE_NAME = 'lvbet_odds.csv'
-ODDS_JSON_PATH = 'lvbet_tennis.json'
-ODDS_ORG_JSON_PATH = 'lvbet_tennis_org.json'
+OUT_FILE_NAME = 'data/odds/lvbet_odds.csv'
+ODDS_JSON_PATH = 'data/raw/lvbet_tennis.json'
+ODDS_ORG_JSON_PATH = 'data/raw/lvbet_tennis_org.json'
 MATCH_ID_ENV_VAR = 'LVBET_MATCH_ID'
 
 INCLUDE_TOURNAMENT_KEYWORDS = [
@@ -288,7 +288,7 @@ class _OddsPrinter:
 
 
 def main():
-    with open('tennis_dictionary.json', 'r', encoding='utf-8') as dict_file:
+    with open('config/tennis_dictionary.json', 'r', encoding='utf-8') as dict_file:
         tennis_dictionary = json.load(dict_file)
 
     conn = connect_to_wp_db.connect_to_db()

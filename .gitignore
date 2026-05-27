@@ -9,17 +9,15 @@ venv/
 # Runtime artifacts
 logs/*.log
 *.log
-*.csv
-*.csv_tmp
 *.jsonl
 *.db
-*_odds.html
-*_tennis.json
-*_tennis_org.json
-totalbet_tennis_one_game.json
-totalbet_tennis_org_one_game.json
-betclick_tennis.txt
-betclic_failed_urls.txt
+data/odds/*.csv
+data/odds/*.csv_tmp
+data/raw/*.json
+data/raw/*.txt
+data/reports/*.html
+data/runtime/*.json
+data/runtime/*.txt
 
 # IDE / OS
 .vscode/
