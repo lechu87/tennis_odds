@@ -1,0 +1,25 @@
+# Python
+__pycache__/
+*.py[cod]
+*.so
+.venv/
+venv/
+.env
+
+# Runtime artifacts
+logs/*.log
+*.log
+*.csv
+*.csv_tmp
+*.jsonl
+*.db
+
+# IDE / OS
+.vscode/
+.idea/
+.DS_Store
+
+# Temporary files
+tmp/
+*.tmp
+*.swp
