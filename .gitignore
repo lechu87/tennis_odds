@@ -13,6 +13,13 @@ logs/*.log
 *.csv_tmp
 *.jsonl
 *.db
+*_odds.html
+*_tennis.json
+*_tennis_org.json
+totalbet_tennis_one_game.json
+totalbet_tennis_org_one_game.json
+betclick_tennis.txt
+betclic_failed_urls.txt
 
 # IDE / OS
 .vscode/

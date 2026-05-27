@@ -23,7 +23,7 @@ def run_job(root: Path, script: str, log_rel: str) -> int:
         print(f"[WARN] Missing script, skipped: {script}")
         return 0
 
-    with log_path.open("a", encoding="utf-8") as log_file:
+    with log_path.open("w", encoding="utf-8") as log_file:
         log_file.write(f"\n=== RUN {script} ===\n")
         proc = subprocess.run([sys.executable, str(script_path)], stdout=log_file, stderr=log_file)
 

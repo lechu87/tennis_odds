@@ -30,9 +30,18 @@ def _env_required(name):
     raise RuntimeError(f'Missing required environment variable: {name}')
 
 
+def _env_any(*names, default=None):
+    """Get first non-empty value from provided env names."""
+    for name in names:
+        value = os.getenv(name)
+        if value is not None and value != '':
+            return value
+    return default
+
+
 def _env_int(name, default):
     """Get integer environment variable with default"""
-    raw = os.getenv(name)
+    raw = _env_any(name)
     if raw is None or raw == '':
         return default
     return int(raw)
@@ -40,11 +49,11 @@ def _env_int(name, default):
 
 def connect_to_postgres_local():
     """Połączenie do lokalnego PostgreSQL (bez tunelu SSH)"""
-    db_host = os.getenv('ODDS_DB_HOST', 'localhost')
-    db_user = os.getenv('ODDS_DB_USER', 'postgres')
-    db_pass = os.getenv('ODDS_DB_PASSWORD', 'password')
-    db_name = os.getenv('ODDS_DB_NAME', 'odds_db')
-    db_port = _env_int('ODDS_DB_PORT', 5432)
+    db_host = _env_any('ODDS_DB_HOST', 'DB_HOST', default='localhost')
+    db_user = _env_any('ODDS_DB_USER', 'DB_USER', default='postgres')
+    db_pass = _env_any('ODDS_DB_PASSWORD', 'DB_PASSWORD', default='password')
+    db_name = _env_any('ODDS_DB_NAME', 'DB_NAME', default='odds_db')
+    db_port = int(_env_any('ODDS_DB_PORT', 'DB_PORT', default='5432'))
 
     try:
         conn = psycopg2.connect(
@@ -64,17 +73,21 @@ def connect_to_postgres_local():
 def connect_to_postgres_ssh():
     """Połączenie do PostgreSQL przez tunel SSH"""
     # SSH config
-    ssh_host = _env_required('ODDS_SSH_HOST')
-    ssh_user = _env_required('ODDS_SSH_USER')
-    ssh_port = _env_int('ODDS_SSH_PORT', 22)
-    ssh_key_path = os.getenv('ODDS_SSH_KEY_PATH', os.path.expanduser('~/.ssh/id_rsa'))
+    ssh_host = _env_any('ODDS_SSH_HOST', 'SSH_HOST')
+    ssh_user = _env_any('ODDS_SSH_USER', 'SSH_USER')
+    if not ssh_host:
+        raise RuntimeError('Missing required environment variable: ODDS_SSH_HOST (or SSH_HOST)')
+    if not ssh_user:
+        raise RuntimeError('Missing required environment variable: ODDS_SSH_USER (or SSH_USER)')
+    ssh_port = int(_env_any('ODDS_SSH_PORT', 'SSH_PORT', default='22'))
+    ssh_key_path = _env_any('ODDS_SSH_KEY_PATH', 'SSH_KEY_PATH', default=os.path.expanduser('~/.ssh/id_rsa'))
 
     # Database config
-    db_host = os.getenv('ODDS_DB_HOST', 'localhost')
-    db_user = os.getenv('ODDS_DB_USER', 'postgres')
-    db_pass = os.getenv('ODDS_DB_PASSWORD', 'password')
-    db_name = os.getenv('ODDS_DB_NAME', 'odds_db')
-    db_port = _env_int('ODDS_DB_PORT', 5432)
+    db_host = _env_any('ODDS_DB_HOST', 'DB_HOST', default='localhost')
+    db_user = _env_any('ODDS_DB_USER', 'DB_USER', default='postgres')
+    db_pass = _env_any('ODDS_DB_PASSWORD', 'DB_PASSWORD', default='password')
+    db_name = _env_any('ODDS_DB_NAME', 'DB_NAME', default='odds_db')
+    db_port = int(_env_any('ODDS_DB_PORT', 'DB_PORT', default='5432'))
 
     try:
         mypkey = paramiko.RSAKey.from_private_key_file(ssh_key_path)
@@ -107,7 +120,7 @@ def connect_to_db():
     Jeśli ODDS_SSH_HOST jest ustawiony, używa tunelu SSH,
     w przeciwnym razie połączenie bezpośrednie.
     """
-    use_ssh = os.getenv('ODDS_SSH_HOST')
+    use_ssh = _env_any('ODDS_SSH_HOST', 'SSH_HOST')
     
     if use_ssh:
         return connect_to_postgres_ssh()
