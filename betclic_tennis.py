@@ -186,23 +186,3 @@ class tennis_match:
     def insert_odds_converted_to_db(self):
         tennis_functions.insert_odds_converted_to_db(self)
 
-    def create_database_for_odds(self):
-        import sqlite3
-        conn = sqlite3.connect('betclic.db')
-        c = conn.cursor()
-        c.execute("SELECT name FROM sqlite_master WHERE type='table' AND name='odds';")
-        if not c.fetchone():
-            c.execute('''CREATE TABLE odds
-             (id INTEGER PRIMARY KEY AUTOINCREMENT, 
-             tournament TEXT, 
-             player1 TEXT, 
-             player2 TEXT, 
-             name TEXT, 
-             cat1 TEXT, 
-             cat2 TEXT, 
-             value TEXT, 
-             odd REAL, 
-             bukmacher TEXT, 
-             date TEXT);''')
-            
-

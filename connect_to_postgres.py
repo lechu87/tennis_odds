@@ -219,27 +219,6 @@ def test_connection():
         return False
 
 
-def connect_to_db():
-    """Drop-in replacement dla connect_to_wp_db.connect_to_db() — używa lokalnego PostgreSQL."""
-    return connect_to_postgres_local()
-
-
-def create_tables():
-    """Tworzy schemat bazy danych z db_schema.sql"""
-    conn = connect_to_postgres_local()
-    cur = conn.cursor()
-
-    sql_file = os.path.join(os.path.dirname(os.path.abspath(__file__)), 'sql', 'db_schema.sql')
-    with open(sql_file, 'r', encoding='utf-8') as f:
-        sql = f.read()
-
-    cur.execute(sql)
-    conn.commit()
-    cur.close()
-    conn.close()
-    print("✓ Tabele bazy danych utworzone")
-
-
 if __name__ == '__main__':
     if test_connection():
         print("✓ Wszystko OK! Możesz teraz uruchamiać skrypty.")

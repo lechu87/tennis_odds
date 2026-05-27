@@ -463,7 +463,7 @@ with open(out_file_name, 'w') as outfile:
         sys.exit(1)
 
     # Krok 2: Linki z pierwszego widoku
-    match_urls = set(BASE_URL + l for l in re.findall(r'href="(/tenis-stennis/[^"]+m\d+)"', html_content))
+    match_urls = set(BASE_URL + link_path for link_path in re.findall(r'href="(/tenis-stennis/[^"]+m\d+)"', html_content))
 
     # Krok 3: Dociągnij turnieje tenisowe i ich strony (bez zależności od infinite scroll)
     root_ng = extract_ng_state(html_content)

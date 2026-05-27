@@ -1,11 +1,4 @@
-import sys
-import time
-import re
-import requests
-from bs4 import BeautifulSoup
 from datetime import datetime
-from collections import defaultdict
-import urllib.request as urllib2
 import json
 import tennis_functions
 
@@ -194,50 +187,6 @@ class tennis_match:
                     odds_converted['odds'][name][cat1][odd_n][value]=self.odds_org['odds'][raw_name][market]
         return odds_converted
 
-    def get_odds_old(self):
-        odds={}
-        odds['player1']=self.player1
-        odds['player2']=self.player2
-        odds['date']=self.date
-        odds['odds']={}
-        for eventGame in self.tennis_match['data']['eventGames']:
-            name=eventGame['gameName'].lower()
-            if name.startswith("poniżej"):
-                if "asów w meczu" in name:
-                    name="asów"
-                elif "błędów w meczu" in name:
-                    name="df"
-                else:
-                    name=name.rsplit(' ')[-1]
-                for outcome in eventGame['outcomes']:
-                    outcomeName,ile=outcome['outcomeName'].split(' ')[0:2]         
-                    odd=outcome['outcomeOdds']
-                    #print (name,outcomeName,ile,odd)
-                    if name not in odds['odds']:
-                        odds['odds'][name]={}
-                    if outcomeName not in odds['odds'][name]:
-                        odds['odds'][name][outcomeName]={}
-                    odds['odds'][name][outcomeName][ile]=odd
-            elif name.startswith("Handicap gemowy"):
-                name=name.rsplit(' ')[0:2]
-                for outcome in eventGame['outcomes']:
-                    ile=outcome['outcomeName'].pop()
-                    oucomeName=outcome['outcomeName']
-                    odd=outcome['outcomeOdds']
-                    if name not in odds['odds']:
-                        odds['odds'][name]={}
-                    if outcomeName not in odds['odds'][name]:
-                        odds['odds'][name][outcomeName][ile]=odd
-            else:    
-                odd_name=name
-                if odd_name not in odds['odds']:
-                    odds['odds'][odd_name]={}
-                for outcome in eventGame['outcomes']:
-                    outcomeName=outcome['outcomeName']
-                    odd=outcome['outcomeOdds']
-                    odds['odds'][odd_name][outcomeName]=odd
-        return odds
-
     def get_odds_org(self):
         odds={}
         odds['player1']=self.player1_raw
@@ -259,60 +208,6 @@ class tennis_match:
                 odds['odds'][odd_name][outcomeName]=odd
         return odds
     
-    def convert_odds(self):
-        odds_converted={}
-        keys_to_remove=[]
-        odds_converted['tournament']=self.tournament
-        odds_converted['bukmacher_name']=self.bukmacher
-        odds_converted['player1']=self.player1
-        odds_converted['player2']=self.player2
-        odds_converted['odds']={'win':{'overall':{self.player2:{self.odds['odds']['zwycięzca'].get(self.player2)}}}}
-        odds_converted['odds']['win']['overall'][self.player1]={self.odds['odds']['zwycięzca'].get(self.player1)}
-        keys_to_remove.append('zwycięzca')
-        odds_converted['Ace']={'overall':{'over':{},'under':{}}}
-        for und_ov in self.odds['odds'].get('asów',[]):
-            #print ("und_ov:",und_ov)
-            if und_ov=='Poniżej':
-                typ='over'
-            else:
-                typ='under'
-            for line in self.odds['odds']['asów'][und_ov]:
-                odds_converted['Ace']['overall'][typ][float(line)]=self.odds['odds']['asów'][und_ov][line]
-        #hubert hurkacz poniżej/powyżej 14.5 asów
-        odds_converted['Ace']={'player1':{'over':{},'under':{}},'player2':{'over':{},'under':{}}}
-        for key in self.odds['odds']:
-            if 'poniżej/powyżej' in key and 'asów' in key:
-                if self.player1.lower() in key:
-                    player='player1'
-                else:
-                    player='player2'
-                for k in self.odds['odds'][key]:
-                    if 'Poniżej' in k:
-                        und_ov='under'
-                    else:
-                        und_ov='over'
-                    ile=k.split(' ')[1]
-                    odds_converted['Ace'][player][und_ov][ile]=self.odds['odds'][key][k]
-
-        odds_converted['Gem']={'overall':{'over':{},'under':{}}}
-        if 'gemów' in self.odds['odds']:
-            for gems in self.odds['odds']['gemów']['Poniżej']:
-                odds_converted['Gem']['overall']['under'][gems]=self.odds['odds']['gemów']['Poniżej'][gems]
-            for gems in self.odds['odds']['gemów']['Powyżej']:
-                odds_converted['Gem']['overall']['over'][gems]=self.odds['odds']['gemów']['Powyżej'][gems]
-        #'handicap gemowy -1.5': {'Sebastian Baez -1.5': 1.52,
-          #'Pedro Cachin +1.5': 2.44},
-        for k in self.odds['odds']:
-            if k.startswith('handicap gemowy'):
-                for key,odd in self.odds['odds'][k].items():
-                    key,value=key.rsplit(' ',1)
-                    if 'handicap' not in odds_converted['Gem']:
-                        odds_converted['Gem']['handicap']={}
-                    if key not in odds_converted['Gem']['handicap']:
-                        odds_converted['Gem']['handicap'][key]={}
-                    odds_converted['Gem']['handicap'][key][value]=odd
-        return odds_converted
-
     def delete_odds_from_db(self):
         tennis_functions.delete_odds_from_db(self)
     def delete_odds_from_maria_db(self,conn):
@@ -328,41 +223,5 @@ class tennis_match:
     def insert_odds_converted_to_db(self):
         tennis_functions.insert_odds_converted_to_db(self)
             
-    def insert_odds_to_db_to_del(self):
-        import sqlite3
-        conn = sqlite3.connect('betclic.db')
-        c = conn.cursor()
-        for name in self.odds['odds']:
-            for cat1 in self.odds['odds'][name]:
-                for cat2 in self.odds['odds'][name][cat1]:
-                    if type(self.odds['odds'][name][cat1][cat2]) is dict:
-                        for value in self.odds['odds'][name][cat1][cat2]:
-                            odd=self.odds['odds'][name][cat1][cat2][value]
-                            c.execute("INSERT INTO odds (tournament, player1, player2, name, cat1, cat2, value, odd, bukmacher, date) VALUES (?,?,?,?,?,?,?,?,?,?)",(self.odds['tournament'],self.odds['player1'],self.odds['player2'],name,cat1,cat2,value,odd,self.odds['bukmacher_name'],self.odds['date']))
-                    else:
-                        odd=self.odds['odds'][name][cat1][cat2]
-                        c.execute("INSERT INTO odds (tournament, player1, player2, name, cat1, cat2, value, odd, bukmacher, date) VALUES (?,?,?,?,?,?,?,?,?,?)",(self.odds['tournament'],self.odds['player1'],self.odds['player2'],name,cat1,cat2,'',odd,self.odds['bukmacher_name'],self.odds['date']))
-        conn.commit()
-        conn.close()
     def print_odds_converted(self,filename=None):
         tennis_functions.print_odds_converted(self,filename)
-
-    def delete_odds_from_db(self):
-        tennis_functions.delete_odds_from_db(self)
-    def delete_odds_from_maria_db(self,conn):
-        tennis_functions.delete_odds_from_maria_db(self,conn)
-
-    def insert_odds_converted_to_maria_db(self,conn):
-        tennis_functions.insert_odds_converted_to_maria_db(self,conn)
-
-    def insert_odds_converted_to_db(self):
-        tennis_functions.insert_odds_converted_to_db(self)
-    #delete game if exists in db
-    def delete_odds_from_db_to_del(self):
-        import sqlite3
-        conn = sqlite3.connect('betclic.db')
-        c = conn.cursor()
-        c.execute("DELETE FROM odds WHERE player1=? AND player2=? AND bukmacher=? AND date=?",(self.odds['player1'],self.odds['player2'],self.odds['bukmacher_name'],self.odds['date']))
-        conn.commit()
-        print ("deleted player1:",self.odds['player1'],"player2:",self.odds['player2'],"bukmacher:",self.odds['bukmacher_name'],"date:",self.odds['date'])
-        conn.close()

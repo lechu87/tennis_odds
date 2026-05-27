@@ -1,6 +1,5 @@
 import requests
 import csv
-import sys
 def delete_odds_from_db(self):
     import sqlite3
     conn = sqlite3.connect('betclic.db')
@@ -36,16 +35,6 @@ def read_players_and_dates(filename):
 
     return players,dates
 
-def delete_players_and_dates_old(conn,players,dates,bukmacher):
-    query="DELETE FROM odds WHERE player1 IN (%s) AND bukmacher = %s AND date = %s"
-    for date in dates:
-        values=(','.join(players.keys()),bukmacher,date)
-        #values=('Mayar Sherif','betclic',date)
-        print (query%values)
-        c = conn.cursor()
-        c.execute(query, values)
-    conn.commit()
-
 def delete_players_and_dates(conn,players,dates,bukmacher):
     if not players or not dates:
         print("Usunięto:", 0)
@@ -72,27 +61,6 @@ def delete_players_and_dates(conn,players,dates,bukmacher):
     print("Usunięto:", total_deleted)
     c.close()
 
-def insert_to_db_from_file(conn,filename):
-    c = conn.cursor()
-    with open(filename, 'r') as file:
-        reader = csv.reader(file, delimiter='\t')
-        next(reader)  # Pominięcie nagłówka pliku CSV (opcjonalne)
-        wierszy=0
-        # Przeglądanie wierszy pliku CSV i wstawianie ich do bazy danych
-        for row in reader:
-            wierszy=wierszy+1
-            tournament, player1, player2, name, cat1, cat2, value, odd, bukmacher_name, date = row
-            
-            # Tworzenie zapytania SQL
-            sql = "INSERT INTO odds (tournament, player1, player2, name, cat1, cat2, value, odd, bukmacher, date) VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s)"
-            values = (tournament, player1, player2, name, cat1, cat2, value, odd, bukmacher_name, date)
-
-            # Wykonanie zapytania SQL
-            c.execute(sql, values)
-
-    # Zatwierdzenie zmian
-    print ("Wrzuciłem wierszy:",wierszy)
-    conn.commit()
 def insert_to_db_from_file_new(conn,filename):
     c = conn.cursor()
     with open(filename, 'r') as file:
@@ -172,25 +140,6 @@ def insert_odds_converted_to_db(self):
     conn.close()
 
 
-def create_database_for_odds(self):
-    import sqlite3
-    conn = sqlite3.connect('betclic.db')
-    c = conn.cursor()
-    c.execute("SELECT name FROM sqlite_master WHERE type='table' AND name='odds';")
-    if not c.fetchone():
-        c.execute('''CREATE TABLE odds
-            (id INTEGER PRIMARY KEY AUTOINCREMENT, 
-            tournament TEXT, 
-            player1 TEXT, 
-            player2 TEXT, 
-            name TEXT, 
-            cat1 TEXT, 
-            cat2 TEXT, 
-            value TEXT, 
-            odd REAL, 
-            bukmacher TEXT, 
-            date TEXT);''')
-        
 def read_api(url):
     headers = {
     "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/100.0.1000.0 Safari/537.36",
@@ -219,13 +168,13 @@ def print_odds_converted(self,filename=None):
                     if type(self.odds['odds'][name][cat1][cat2]) is dict:
                         for value in self.odds['odds'][name][cat1][cat2]:
                             odd=self.odds['odds'][name][cat1][cat2][value]
-                            if filename==None:
+                            if filename is None:
                                 print(self.odds['tournament'],self.odds['player1'],self.odds['player2'],name,cat1,cat2,value,odd,self.odds['bukmacher_name'],self.odds['date'],sep='\t')
                             else:
                                 print(self.odds['tournament'],self.odds['player1'],self.odds['player2'],name,cat1,cat2,value,odd,self.odds['bukmacher_name'],self.odds['date'],sep='\t',file=filename)
                     else:
                         odd=self.odds['odds'][name][cat1][cat2]
-                        if filename==None:
+                        if filename is None:
                             print(self.odds['tournament'],self.odds['player1'],self.odds['player2'],name,cat1,cat2,'',odd,self.odds['bukmacher_name'],self.odds['date'],sep='\t')
                         else:
                             print(self.odds['tournament'],self.odds['player1'],self.odds['player2'],name,cat1,cat2,'',odd,self.odds['bukmacher_name'],self.odds['date'],sep='\t',file=filename)
