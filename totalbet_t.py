@@ -290,6 +290,7 @@ def main():
     players, dates = tennis_functions.read_players_and_dates(OUT_FILE_NAME)
     tennis_functions.delete_players_and_dates(conn, players, dates, BUKMACHER)
     tennis_functions.insert_to_db_from_file_new(conn, OUT_FILE_NAME)
+    tennis_functions.append_odds_history(conn, OUT_FILE_NAME, BUKMACHER)
     conn.close()
 
 

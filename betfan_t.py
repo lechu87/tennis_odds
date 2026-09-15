@@ -149,5 +149,6 @@ json.dump(all_odds_org,open('data/raw/betfan_tennis_org.json','w'))
 players,dates=tennis_functions.read_players_and_dates(out_file_name)
 tennis_functions.delete_players_and_dates(conn,players,dates,'betfan')
 tennis_functions.insert_to_db_from_file_new(conn,out_file_name)
+tennis_functions.append_odds_history(conn,out_file_name,'betfan')
 conn.close()
 

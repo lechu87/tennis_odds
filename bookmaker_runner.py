@@ -125,4 +125,5 @@ def run_iforbet_family(
     players, dates = tennis_functions.read_players_and_dates(out_file_name)
     tennis_functions.delete_players_and_dates(conn, players, dates, bukmacher)
     tennis_functions.insert_to_db_from_file_new(conn, out_file_name)
+    tennis_functions.append_odds_history(conn, out_file_name, bukmacher)
     conn.close()
