@@ -364,3 +364,227 @@ FROM ace_base
 WHERE norm_line_value IS NOT NULL
 GROUP BY date, tournament, player1, player2, cat1, line_side, norm_line_value
 ORDER BY date DESC, tournament, player1, player2, cat1, norm_line_value, line_side;
+
+-- ============================================================================
+-- 6. PRACTICAL VALUE SCANNER (ALL MARKETS, PIVOT-READY)
+-- ============================================================================
+-- Finds rows where one bookmaker is clearly above the rest.
+-- Parameters:
+--   {{date_from}} optional date
+--   {{date_to}} optional date
+--   {{tournament}} optional text
+--   {{market_name}} optional text (e.g. score, win, Gem)
+--   {{min_books}} optional number (recommended 3)
+--   {{min_spread_pct}} optional number (recommended 6)
+--   {{min_odd}} optional number (recommended 1.2)
+--   {{max_odd}} optional number (recommended 8)
+
+WITH base AS (
+    SELECT
+        date,
+        tournament,
+        player1,
+        player2,
+        name,
+        cat1,
+        cat2,
+        value,
+        bukmacher,
+        odd,
+        COALESCE(NULLIF(TRIM(value), ''), NULLIF(TRIM(cat2), '')) AS outcome_label
+    FROM odds
+    WHERE odd IS NOT NULL
+      [[AND date >= {{date_from}}]]
+      [[AND date <= {{date_to}}]]
+      [[AND tournament = {{tournament}}]]
+      [[AND name = {{market_name}}]]
+), agg AS (
+    SELECT
+        date,
+        tournament,
+        player1,
+        player2,
+        name,
+        cat1,
+        cat2,
+        value,
+        outcome_label,
+        COUNT(DISTINCT bukmacher) AS books,
+        MAX(odd) AS best_odd,
+        MIN(odd) AS worst_odd,
+        AVG(odd) AS avg_odd,
+        PERCENTILE_CONT(0.5) WITHIN GROUP (ORDER BY odd) AS med_odd,
+        (ARRAY_AGG(bukmacher ORDER BY odd DESC))[1] AS best_bookmaker,
+        (ARRAY_AGG(bukmacher ORDER BY odd ASC))[1] AS worst_bookmaker
+    FROM base
+    GROUP BY date, tournament, player1, player2, name, cat1, cat2, value, outcome_label
+)
+SELECT
+    date,
+    tournament,
+    player1,
+    player2,
+    name,
+    cat1,
+    cat2,
+    value,
+    outcome_label,
+    books,
+    ROUND(best_odd, 4) AS best_odd,
+    best_bookmaker,
+    ROUND(avg_odd, 4) AS avg_odd,
+    ROUND(med_odd, 4) AS med_odd,
+    ROUND(worst_odd, 4) AS worst_odd,
+    worst_bookmaker,
+    ROUND(best_odd - worst_odd, 4) AS spread_abs,
+    ROUND((best_odd - worst_odd) / NULLIF(worst_odd, 0) * 100, 2) AS spread_pct,
+    ROUND((best_odd - avg_odd) / NULLIF(avg_odd, 0) * 100, 2) AS edge_vs_avg_pct,
+    ROUND((best_odd - med_odd) / NULLIF(med_odd, 0) * 100, 2) AS edge_vs_median_pct,
+    MAX(odd) FILTER (WHERE bukmacher = 'betclic') AS betclic,
+    MAX(odd) FILTER (WHERE bukmacher = 'betfan') AS betfan,
+    MAX(odd) FILTER (WHERE bukmacher = 'iforbet') AS iforbet,
+    MAX(odd) FILTER (WHERE bukmacher = 'etoto') AS etoto,
+    MAX(odd) FILTER (WHERE bukmacher = 'totalbet') AS totalbet,
+    MAX(odd) FILTER (WHERE bukmacher = 'lvbet') AS lvbet,
+    STRING_AGG(bukmacher || ': ' || odd::text, ' | ' ORDER BY bukmacher) AS offers
+FROM base b
+JOIN agg a USING (date, tournament, player1, player2, name, cat1, cat2, value, outcome_label)
+GROUP BY
+    date, tournament, player1, player2, name, cat1, cat2, value, outcome_label,
+    books, best_odd, best_bookmaker, avg_odd, med_odd, worst_odd, worst_bookmaker
+HAVING books >= 3
+    AND best_odd BETWEEN 1.2 AND 8.0
+    AND (best_odd - worst_odd) / NULLIF(worst_odd, 0) * 100 >= 6
+    [[AND books >= {{min_books}}]]
+    [[AND best_odd >= {{min_odd}}]]
+    [[AND best_odd <= {{max_odd}}]]
+    [[AND (best_odd - worst_odd) / NULLIF(worst_odd, 0) * 100 >= {{min_spread_pct}}]]
+ORDER BY edge_vs_avg_pct DESC, spread_pct DESC, best_odd DESC;
+
+-- ============================================================================
+-- 7. WIN PIVOT (BOOKMAKERS SIDE-BY-SIDE)
+-- ============================================================================
+-- Dedicated monitor for match winner market.
+-- Parameters:
+--   {{date_from}} optional date
+--   {{date_to}} optional date
+--   {{tournament}} optional text
+--   {{player}} optional text
+
+WITH win_base AS (
+    SELECT
+        date,
+        tournament,
+        player1,
+        player2,
+        COALESCE(NULLIF(TRIM(value), ''), NULLIF(TRIM(cat2), '')) AS outcome,
+        bukmacher,
+        odd
+    FROM odds
+    WHERE name = 'win'
+      AND cat1 = 'overall'
+      AND odd IS NOT NULL
+      [[AND date >= {{date_from}}]]
+      [[AND date <= {{date_to}}]]
+      [[AND tournament = {{tournament}}]]
+      [[AND (player1 ILIKE '%' || {{player}} || '%' OR player2 ILIKE '%' || {{player}} || '%')]]
+)
+SELECT
+    date,
+    tournament,
+    player1,
+    player2,
+    outcome,
+    COUNT(DISTINCT bukmacher) AS books,
+    MAX(odd) AS best_odd,
+    MIN(odd) AS worst_odd,
+    ROUND(MAX(odd) - MIN(odd), 4) AS spread_abs,
+    ROUND((MAX(odd) - MIN(odd)) / NULLIF(MIN(odd), 0) * 100, 2) AS spread_pct,
+    MAX(odd) FILTER (WHERE bukmacher = 'betclic') AS betclic,
+    MAX(odd) FILTER (WHERE bukmacher = 'betfan') AS betfan,
+    MAX(odd) FILTER (WHERE bukmacher = 'iforbet') AS iforbet,
+    MAX(odd) FILTER (WHERE bukmacher = 'etoto') AS etoto,
+    MAX(odd) FILTER (WHERE bukmacher = 'totalbet') AS totalbet,
+    MAX(odd) FILTER (WHERE bukmacher = 'lvbet') AS lvbet,
+    STRING_AGG(bukmacher || ': ' || odd::text, ' | ' ORDER BY bukmacher) AS offers
+FROM win_base
+WHERE outcome IS NOT NULL
+GROUP BY date, tournament, player1, player2, outcome
+ORDER BY date DESC, tournament, player1, player2, outcome;
+
+-- ============================================================================
+-- 8. WIN SUREBET / ARB MONITOR
+-- ============================================================================
+-- For 2-way winner market only.
+-- arb_index_pct < 100 means theoretical arbitrage exists.
+-- Parameters:
+--   {{date_from}} optional date
+--   {{date_to}} optional date
+--   {{tournament}} optional text
+
+WITH win_base AS (
+    SELECT
+        date,
+        tournament,
+        player1,
+        player2,
+        COALESCE(NULLIF(TRIM(value), ''), NULLIF(TRIM(cat2), '')) AS outcome,
+        bukmacher,
+        odd
+    FROM odds
+    WHERE name = 'win'
+      AND cat1 = 'overall'
+      AND odd IS NOT NULL
+      [[AND date >= {{date_from}}]]
+      [[AND date <= {{date_to}}]]
+      [[AND tournament = {{tournament}}]]
+), best_per_outcome AS (
+    SELECT
+        date,
+        tournament,
+        player1,
+        player2,
+        outcome,
+        MAX(odd) AS best_odd,
+        (ARRAY_AGG(bukmacher ORDER BY odd DESC))[1] AS best_bookmaker
+    FROM win_base
+    WHERE outcome IS NOT NULL
+    GROUP BY date, tournament, player1, player2, outcome
+), paired AS (
+    SELECT
+        a.date,
+        a.tournament,
+        a.player1,
+        a.player2,
+        a.best_odd AS odd_player1,
+        a.best_bookmaker AS book_player1,
+        b.best_odd AS odd_player2,
+        b.best_bookmaker AS book_player2,
+        (1.0 / a.best_odd + 1.0 / b.best_odd) AS arb_index
+    FROM best_per_outcome a
+    JOIN best_per_outcome b
+      ON a.date = b.date
+     AND a.tournament = b.tournament
+     AND a.player1 = b.player1
+     AND a.player2 = b.player2
+     AND a.outcome = a.player1
+     AND b.outcome = a.player2
+)
+SELECT
+    date,
+    tournament,
+    player1,
+    player2,
+    ROUND(odd_player1, 4) AS odd_player1,
+    book_player1,
+    ROUND(odd_player2, 4) AS odd_player2,
+    book_player2,
+    ROUND(arb_index * 100, 2) AS arb_index_pct,
+    ROUND(((1 / arb_index) - 1) * 100, 2) AS theoretical_margin_pct,
+    CASE
+        WHEN arb_index < 1 THEN 'surebet'
+        WHEN arb_index < 1.02 THEN 'near_surebet'
+        ELSE 'no_arb'
+    END AS arb_flag
+FROM paired
+ORDER BY arb_index ASC, date DESC, tournament, player1, player2;

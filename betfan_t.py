@@ -3,9 +3,16 @@
 
 import betfan_tennis
 import json
+import logging
 import tennis_functions
 import connect_to_postgres as connect_to_wp_db
 import os
+
+logging.basicConfig(
+    level=os.getenv('LOG_LEVEL', 'INFO').upper(),
+    format='%(asctime)s %(levelname)s %(name)s: %(message)s',
+)
+logger = logging.getLogger('betfan_t')
 
 
 def _is_allowed_tournament_name(name, include_keywords=None, exclude_keywords=None):
@@ -87,9 +94,9 @@ for tournament in tennis_tournaments:
     for events in tournament_games.get('data', {}).get('categories', [{}])[0].get('events', []):
         all_games.add(events['eventId'])
 
-print('MECZY:', len(all_games))
-print('FILTR include:', INCLUDE_TOURNAMENT_KEYWORDS)
-print('FILTR exclude:', EXCLUDE_TOURNAMENT_KEYWORDS)
+logger.info(f"MECZY: {len(all_games)}")
+logger.info(f"FILTR include: {INCLUDE_TOURNAMENT_KEYWORDS}")
+logger.info(f"FILTR exclude: {EXCLUDE_TOURNAMENT_KEYWORDS}")
 
 processed = 0
 
@@ -128,12 +135,12 @@ for match in sorted(all_games):
         #match_obj.insert_odds_converted_to_maria_db(conn)
         
     except Exception as e:
-        print ("Błąd dla ",match_url,sep='\t')
-        print (e)
+        logger.error(f"Błąd dla {match_url}")
+        logger.error(f"{e}")
         continue
 outfile.close()
 
-print('MECZY przetworzone:', processed)
+logger.info(f"MECZY przetworzone: {processed}")
 
 json.dump(all_odds,open('data/raw/betfan_tennis.json','w'))
 #json.dump(all_odds_converted,open('iforbet_tennis_converted.json','w'))

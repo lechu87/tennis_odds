@@ -2,10 +2,18 @@
 # coding: utf-8
 
 import json
+import logging
+import os
 import traceback
 
 import connect_to_postgres as connect_to_wp_db
 import tennis_functions
+
+logging.basicConfig(
+    level=os.getenv('LOG_LEVEL', 'INFO').upper(),
+    format='%(asctime)s %(levelname)s %(name)s: %(message)s',
+)
+logger = logging.getLogger('bookmaker_runner')
 
 
 def _is_allowed_tournament_name(name, include_keywords=None, exclude_keywords=None):
@@ -41,9 +49,9 @@ def run_iforbet_family(
     all_odds = []
     all_odds_org = []
 
-    print('MECZY:', len(all_games.get('data', [])))
-    print('FILTR include:', include_tournament_keywords or [])
-    print('FILTR exclude:', exclude_tournament_keywords or [])
+    logger.info(f"MECZY: {len(all_games.get('data', []))}")
+    logger.info(f"FILTR include: {include_tournament_keywords or []}")
+    logger.info(f"FILTR exclude: {exclude_tournament_keywords or []}")
 
     conn = connect_to_wp_db.connect_to_db()
     total_seen = 0
@@ -68,8 +76,6 @@ def run_iforbet_family(
 
         event_id_filter = None
         if event_id_env_var:
-            import os
-
             event_id_filter = os.getenv(event_id_env_var)
 
         for match in all_games.get('data', []):
@@ -101,14 +107,14 @@ def run_iforbet_family(
                 match_obj.print_odds_converted(outfile)
                 processed += 1
             except Exception as exc:
-                print('Blad dla', match_url, sep='\t')
-                print(exc)
-                traceback.print_exc()
+                logger.error(f"Blad dla {match_url}")
+                logger.error(str(exc))
+                logger.error(traceback.format_exc())
                 continue
 
-    print('MECZY przetworzone:', processed)
-    print('MECZY odfiltrowane:', filtered_out)
-    print('MECZY sprawdzone:', total_seen)
+    logger.info(f"MECZY przetworzone: {processed}")
+    logger.info(f"MECZY odfiltrowane: {filtered_out}")
+    logger.info(f"MECZY sprawdzone: {total_seen}")
 
     with open(odds_json_path, 'w') as odds_json_file:
         json.dump(all_odds, odds_json_file)

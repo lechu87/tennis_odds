@@ -1,6 +1,8 @@
 from datetime import datetime
+import logging
 import tennis_functions
-import sys
+
+logger = logging.getLogger('betclic_tennis')
 
 class tennis_match:
     def __init__(self, tennis_match):
@@ -137,7 +139,7 @@ class tennis_match:
             if meta is None:
                 meta = self._resolve_dynamic_meta(raw_name)
             if meta is None:
-                print ("Brak w słowniku: ",raw_name,file=sys.stderr)
+                logger.warning(f"Brak w słowniku: {raw_name}")
 
             name=meta['name'] if meta is not None else self.standarize_str(raw_name)
             if name not in odds_converted['odds']:
