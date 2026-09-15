@@ -557,6 +557,9 @@ logger.debug(f"TIME5: {datetime.now().strftime('%H:%M:%S')}")
 tennis_functions.insert_to_db_from_file_new(conn, out_file_name)
 logger.debug(f"TIME6: {datetime.now().strftime('%H:%M:%S')}")
 
+tennis_functions.append_odds_history(conn, out_file_name, 'betclic')
+logger.debug(f"TIME7: {datetime.now().strftime('%H:%M:%S')}")
+
 conn.close()
 
 # Generuj HTML tabelkę do szybkiego przeglądania

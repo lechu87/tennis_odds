@@ -61,6 +61,103 @@ def delete_players_and_dates(conn,players,dates,bukmacher):
     print("Usunięto:", total_deleted)
     c.close()
 
+
+HISTORY_KEY_FIELDS = ('tournament', 'player1', 'player2', 'name', 'cat1', 'cat2', 'value', 'date')
+
+
+def _history_key(row):
+    """Natural key identifying one odds line, scoped to a single bookmaker."""
+    return tuple(row[field] for field in HISTORY_KEY_FIELDS)
+
+
+def _normalize_odd(value):
+    """Round to the same precision as the DECIMAL(10,4) column so string/Decimal formatting never causes false diffs."""
+    try:
+        return round(float(value), 4)
+    except (TypeError, ValueError):
+        return None
+
+
+def rows_changed_since_last_snapshot(rows, last_odds):
+    """Keep only rows whose odd is new or differs from the last recorded value.
+
+    rows: dicts read from the bookmaker's CSV output (tournament..date columns).
+    last_odds: {history_key: last_known_odd} as returned by fetch_last_odds_map().
+
+    If the same natural key appears more than once in `rows` (a bookmaker-side data
+    quality issue, since cat2/value should disambiguate selections), only the last
+    occurrence in the file is considered - matching "last write wins" semantics instead
+    of depending on non-deterministic DB tie-breaking.
+    """
+    deduped = {}
+    for row in rows:
+        deduped[_history_key(row)] = row
+
+    changed = []
+    for key, row in deduped.items():
+        previous = last_odds.get(key)
+        current = _normalize_odd(row['odd'])
+        if previous is None or previous != current:
+            changed.append(row)
+    return changed
+
+
+def fetch_last_odds_map(conn, bukmacher):
+    """Latest known odd per natural key for one bookmaker, from odds_history."""
+    c = conn.cursor()
+    c.execute(
+        """
+        SELECT DISTINCT ON (tournament, player1, player2, name, cat1, cat2, value, date)
+               tournament, player1, player2, name, cat1, cat2, value, date, odd
+        FROM odds_history
+        WHERE bukmacher = %s
+        ORDER BY tournament, player1, player2, name, cat1, cat2, value, date, observed_at DESC, id DESC
+        """,
+        (bukmacher,),
+    )
+    last_odds = {}
+    for tournament, player1, player2, name, cat1, cat2, value, date, odd in c.fetchall():
+        key = (tournament, player1, player2, name, cat1, cat2, value, str(date))
+        last_odds[key] = _normalize_odd(odd)
+    c.close()
+    return last_odds
+
+
+def append_odds_history(conn, filename, bukmacher):
+    """Append only the odds that changed (or are new) since the last recorded snapshot.
+
+    Keeps odds_history slim and meaningful instead of duplicating a full dump on every run.
+    """
+    with open(filename, 'r') as file:
+        reader = csv.DictReader(file, delimiter='\t')
+        rows = list(reader)
+
+    last_odds = fetch_last_odds_map(conn, bukmacher)
+    changed_rows = rows_changed_since_last_snapshot(rows, last_odds)
+
+    if not changed_rows:
+        print("Historia kursów bez zmian:", 0)
+        return 0
+
+    c = conn.cursor()
+    sql = (
+        "INSERT INTO odds_history (tournament, player1, player2, name, cat1, cat2, value, odd, bukmacher, date) "
+        "VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s)"
+    )
+    values = [
+        (
+            row['tournament'], row['player1'], row['player2'], row['name'],
+            row['cat1'], row['cat2'], row['value'], row['odd'], row['bukmacher'], row['date'],
+        )
+        for row in changed_rows
+    ]
+    c.executemany(sql, values)
+    conn.commit()
+    c.close()
+    print("Historia kursów zapisana (zmiany):", len(changed_rows))
+    return len(changed_rows)
+
+
 def insert_to_db_from_file_new(conn,filename):
     c = conn.cursor()
     with open(filename, 'r') as file:
