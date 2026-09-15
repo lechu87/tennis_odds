@@ -3,6 +3,48 @@ from datetime import datetime
 import json
 import tennis_functions
 
+
+_LEADING_SET_PREFIX_RE = re.compile(r'^(\d+\.{0,2}\s*set\s*[-–]\s*)(.*)$', re.IGNORECASE)
+
+
+def _argument_candidates(argument):
+    """All textual forms an argument's numeric value might appear as in a raw market label."""
+    if argument is None:
+        return []
+    candidates = set()
+    for value in (float(argument), float(argument) * -1):
+        text = str(value)
+        candidates.add(text)
+        candidates.add(text.replace('.', ','))
+        if value.is_integer():
+            int_text = str(int(value))
+            candidates.add(int_text)
+            candidates.add(int_text.replace('.', ','))
+    return sorted(candidates, key=len, reverse=True)
+
+
+def _strip_argument(odd_name, argument):
+    """Remove the argument's numeric value baked into the raw market label.
+
+    A leading "<set number> set - " prefix is protected from this substitution, so a
+    handicap/line value that happens to equal the set number can never corrupt it
+    (e.g. "2. set - handicap gemy 2" used to become ". set - handicap gemy" - found via
+    a data quality audit of odds_history). Everywhere else the value is stripped as a
+    plain substring, same as before, since most labels embed it mid-string
+    (e.g. "poniżej/powyżej 16.5 gemów").
+    """
+    prefix_match = _LEADING_SET_PREFIX_RE.match(odd_name)
+    prefix, remainder = ('', odd_name) if not prefix_match else prefix_match.groups()
+
+    for candidate in _argument_candidates(argument):
+        remainder = remainder.replace(candidate, '')
+
+    remainder = remainder.replace('  ', ' ').replace(' / +', '').replace(' + / -', '').strip()
+    remainder = re.sub(r'[\s+\-/]+$', '', remainder)
+    return (prefix + remainder).strip()
+
+
+
 class tennis_match:
     def __init__(self,tennis_match,bukmacher="iforbet"):
         with open('config/tennis_dictionary.json') as dict_file:
@@ -138,6 +180,37 @@ class tennis_match:
             return 'overall'
         return cat1
 
+    # "1 set", "1. set", "1.. set" naming drift observed across bookmakers for the same market.
+    _SET_MARKET_RE = re.compile(r'^(\d+)\.{0,2}\s*set\s*[-–]\s*(.+)$')
+    _SET_MATCH_COMBO_RE = re.compile(r'^(\d+)\.{0,2}\s*set\s*/\s*mecz$')
+
+    def _resolve_set_prefixed_meta(self, normalized):
+        """Handle "<set number> set - <market>" labels generically instead of one dict entry per set number."""
+        combo_match = self._SET_MATCH_COMBO_RE.match(normalized)
+        if combo_match:
+            return {'name': 'combined', 'cat1': f'set{combo_match.group(1)}_match', 'type': 'simple'}
+
+        set_match = self._SET_MARKET_RE.match(normalized)
+        if not set_match:
+            return None
+
+        set_number, remainder = set_match.groups()
+        remainder = remainder.strip()
+        cat1_prefix = f'set{set_number}'
+
+        if remainder == 'zwycięzca':
+            return {'name': 'Sets', 'cat1': cat1_prefix, 'type': 'simple'}
+        if remainder == 'dokładny wynik':
+            return {'name': 'score', 'cat1': cat1_prefix, 'type': 'simple'}
+        if remainder in ('suma gemów', 'poniżej/powyżej gemów'):
+            return {'name': 'Gem', 'cat1': cat1_prefix, 'type': 'und_ov', 'suffix': True}
+        if remainder in ('handicap gemy', 'handicap gemowy'):
+            return {'name': 'Gem', 'cat1': f'{cat1_prefix}_handicap', 'type': 'und_ov', 'suffix': False}
+        if remainder in ('zwycięzca i poniżej/powyżej gemów', 'zwycięzca i liczba gemów'):
+            return {'name': 'combined', 'cat1': f'{cat1_prefix}_win_and_gems', 'type': 'und_ov', 'suffix': True}
+
+        return None
+
     def _resolve_dynamic_meta(self, raw_name2):
         normalized = (raw_name2 or '').strip().lower()
         p1 = self.player1_raw.lower()
@@ -148,6 +221,36 @@ class tennis_match:
 
         if normalized == 'handicap sety':
             return {'name': 'Sets', 'cat1': 'handicap', 'type': 'simple', 'suffix': False}
+
+        if normalized == 'handicap gemy':
+            return {'name': 'Gem', 'cat1': 'handicap', 'type': 'und_ov', 'suffix': False}
+
+        if normalized == 'set wygrany 6-0 w meczu?':
+            return {'name': 'Sets', 'cat1': 'set_to_nil', 'type': 'simple'}
+
+        if normalized.endswith('wygra przynajmniej jeden set') or normalized.endswith('wygra co najmniej jednego seta'):
+            return {'name': 'Sets', 'cat1': 'at_least_one_set', 'type': 'simple', 'suffix': False}
+        if normalized.endswith('wygra dokładnie jednego seta'):
+            return {'name': 'Sets', 'cat1': 'exactly1', 'type': 'simple', 'suffix': False}
+        if normalized.endswith('wygra dokładnie dwa sety'):
+            return {'name': 'Sets', 'cat1': 'exactly2', 'type': 'simple', 'suffix': False}
+
+        if normalized == 'handicap gemowy ()':
+            # Some sources always emit an empty argument placeholder in the label itself.
+            return {'name': 'Gem', 'cat1': 'handicap', 'type': 'und_ov', 'suffix': False}
+
+        if normalized == 'dokładna suma setów':
+            return {'name': 'Sets', 'cat1': 'exactly', 'type': 'simple'}
+
+        if normalized == 'liczba gemów':
+            return {'name': 'Gem', 'cat1': 'overall', 'type': 'und_ov', 'suffix': True}
+
+        if normalized == 'liczba gemów - nieparzysta/parzysta':
+            return {'name': 'Gem', 'cat1': 'odd_even', 'type': 'simple'}
+
+        set_prefixed_meta = self._resolve_set_prefixed_meta(normalized)
+        if set_prefixed_meta is not None:
+            return set_prefixed_meta
 
         if _match_player_pattern(p1, r'suma gem[óo]w') or normalized.startswith(p1 + ' suma gemów'):
             return {'name': 'Gem', 'cat1': 'player1', 'type': 'und_ov', 'suffix': True}
@@ -178,8 +281,8 @@ class tennis_match:
         for odd_name in self.odds_org['odds']:
             raw_name=odd_name
             argument=self.odds_org['arguments'][odd_name]
-            if argument!=0.0 and argument or (argument==0.0 and odd_name.startswith('Handicap gemowy')):                
-                raw_name2=odd_name.replace(str(argument),'').replace(str(float(argument)),'').replace(str(float(argument*-1)),'').replace(str(int(argument)),'').replace('-'+str(int(argument)),'').replace('  ',' ').replace(' / +','').replace(' + / -','').strip()
+            if argument!=0.0 and argument or (argument==0.0 and odd_name.startswith('Handicap gemowy')):
+                raw_name2 = _strip_argument(odd_name, argument)
                 #print ("usunąłem ",argument," z ",odd_name)
             else:
                 raw_name2=odd_name
